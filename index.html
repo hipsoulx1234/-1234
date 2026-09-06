@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1인가구 소용량 식재료 구매 서비스 (MVP Demo)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f5f5f7; color: #333; display: flex; justify-content: center; min-height: 100vh; padding: 20px; }
+        .container { background: #ffffff; max-width: 480px; width: 100%; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); position: relative; height: fit-content; }
+        .step { display: none; }
+        .step.active { display: block; }
+        h1 { font-size: 1.4rem; color: #111; margin-bottom: 12px; font-weight: 700; line-height: 1.3; }
+        p { font-size: 0.95rem; color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; font-size: 0.8rem; font-weight: 600; padding: 4px 8px; border-radius: 4px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; color: #444; }
+        select, input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; }
+        select:focus, input[type="text"]:focus { border-color: #0071e3; }
+        .checkbox-group { display: flex; align-items: flex-start; gap: 8px; margin: 20px 0; background: #f9f9f9; padding: 12px; border-radius: 8px; }
+        .checkbox-group input { margin-top: 3px; }
+        .checkbox-group label { font-size: 0.85rem; color: #555; font-weight: normal; margin-bottom: 0; }
+        .btn { width: 100%; background: #0071e3; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #005bb5; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .card { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .card-title { font-size: 0.85rem; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
+        .card-value { font-size: 1.2rem; font-weight: 700; color: #d32f2f; }
+        .demo-notice { font-size: 0.75rem; color: #d97706; background: #fffbe3; padding: 8px; border-radius: 6px; border: 1px solid #fef08a; margin-top: 12px; text-align: center; }
+        .loader { display: none; text-align: center; padding: 40px 0; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #0071e3; border-radius: 50%; width: 36px; height: 36px; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- 단계 1: 랜딩 화면 -->
+    <div id="step-1" class="step active">
+        <span class="badge">1인가구 식재료 간편 구매</span>
+        <h1>버려지는 식재료 손실,<br>얼마나 되시나요?</h1>
+        <p>최근 장을 볼 때 다 못 쓰고 버린 식재료 품목을 선택하여 금전 손실을 확인해 보세요.</p>
+        
+        <div class="form-group">
+            <label for="wasted-item">최근 버려진 식재료 선택</label>
+            <select id="wasted-item">
+                <option value="대파">대파 (한 단 구매 후 방치)</option>
+                <option value="양파">양파 (망 단위 구매 후 방치)</option>
+                <option value="마늘">마늘 (소분 못하고 곰팡이)</option>
+                <option value="기타">기타 신선식품</option>
+            </select>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="privacy-agree">
+            <label for="privacy-agree">[필수] MVP 서비스를 위한 개인정보 수집 및 진단 결과 확인에 동의합니다.</label>
+        </div>
+
+        <button id="btn-to-step2" class="btn" disabled>손실 진단 및 식재료 입력하기</button>
+    </div>
+
+    <!-- 단계 2: 진단·입력 화면 -->
+    <div id="step-2" class="step">
+        <h1>이번 주 필요한 식재료 입력</h1>
+        <p>필요한 품목과 원하는 소용량을 입력하면 AI가 맞춤 견적을 계산합니다.</p>
+
+        <div class="card">
+            <div class="card-title">예상 금전 손실 진단 결과</div>
+            <div id="loss-result" class="card-value">월 약 18,500원 손실 발생 중</div>
+            <div style="font-size: 0.85rem; color: #666; margin-top: 6px;">"대용량 포장으로 인한 방치·폐기 문제에 공감합니다."</div>
+        </div>
+
+        <div class="form-group">
+            <label for="required-item">이번 주 필요한 식재료 품목</label>
+            <input type="text" id="required-item" placeholder="예: 마늘, 대파, 양파" value="마늘, 대파">
+        </div>
+
+        <div class="form-group">
+            <label for="required-qty">희망 용량 / 단위</label>
+            <input type="text" id="required-qty" placeholder="예: 마늘 3알, 대파 1대" value="마늘 3알, 대파 1대">
+        </div>
+
+        <button id="btn-to-step3" class="btn">AI 소용량 견적 산출하기</button>
+    </div>
+
+    <!-- 로딩 화면 (AI 처리 중) -->
+    <div id="loading" class="loader">
+        <div class="spinner"></div>
+        <p style="margin-bottom:0;">AI가 소용량 단가 환산 및<br>맞춤 포장 조합을 산출 중입니다...</p>
+    </div>
+
+    <!-- 단계 3: AI 결과 화면 -->
+    <div id="step-3" class="step">
+        <span class="badge">AI 소용량 맞춤 견적</span>
+        <h1>나만의 소용량 식재료 견적</h1>
+        
+        <div class="card">
+            <div class="card-title" style="color:#0071e3;">AI 추천 소용량 구성</div>
+            <div id="ai-item-list" style="font-weight: 600; margin-bottom: 8px;">마늘 3알 + 대파 1대 (소분 포장)</div>
+            <div class="card-title" style="margin-top: 12px;">예상 소용량 단가</div>
+            <div id="ai-price" class="card-value" style="color:#111;">2,900원 <span style="font-size:0.85rem; font-weight:normal; color:#666;">(대용량 대비 버려지는 비용 절감)</span></div>
+        </div>
+
+        <div style="background: #eef7ff; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #005bb5; margin-bottom: 16px;">
+            💡 <strong>AI 소분 보관 팁:</strong> 대파는 씻어서 밀폐용기에 키친타올을 깔고 보관하시면 2주간 신선도가 유지됩니다.
+        </div>
+
+        <div class="demo-notice">
+            ⚠️ [시뮬레이션 데이터] 실제 유통기한/신선도 및 재고 여부는 보장하지 않으며, 단가 계산은 가치 제시용 시뮬레이션 결과입니다.
+        </div>
+        
+        <button id="btn-to-step4" class="btn" style="margin-top: 16px;">이 구성으로 소용량 배송받기 (사전 예약)</button>
+    </div>
+
+    <!-- 단계 4: 피드백 화면 -->
+    <div id="step-4" class="step">
+        <h1>사전 예약 신청 완료</h1>
+        <p>1인가구 소용량 식재료 구매 서비스 사전 신청이 완료되었습니다.</p>
+
+        <div class="card" style="text-align: center; padding: 24px 16px;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🎉</div>
+            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">소용량 구매 수요가 등록되었습니다!</div>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 0;">수작업 소분모임 없이 필요한 만큼만 구매할 수 있는 정식 서비스 오픈 시 가장 먼저 안내해 드리겠습니다.</p>
+        </div>
+
+        <div class="demo-notice">
+            ℹ️ 본 화면은 실제 결제가 발생하지 않는 <strong>모의 예약(DEMO)</strong> 단계입니다.
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // PRD 유저 플로우 및 인터랙션 제어
+    const privacyAgree = document.getElementById('privacy-agree');
+    const btnToStep2 = document.getElementById('btn-to-step2');
+    const btnToStep3 = document.getElementById('btn-to-step3');
+    const btnToStep4 = document.getElementById('btn-to-step4');
+    const loading = document.getElementById('loading');
+
+    // 개인정보 동의 체크 시에만 단계2 이동 버튼 활성화
+    privacyAgree.addEventListener('change', (e) => {
+        btnToStep2.disabled = !e.target.checked;
+    });
+
+    // 화면 전환 함수
+    function showStep(stepNumber) {
+        document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+        loading.style.display = 'none';
+        document.getElementById(`step-${stepNumber}`).classList.add('active');
+    }
+
+    // 단계 1 -> 단계 2 (진단 및 입력)
+    btnToStep2.addEventListener('click', () => {
+        const wastedItem = document.getElementById('wasted-item').value;
+        const lossResult = document.getElementById('loss-result');
+        
+        if(wastedItem === '대파') lossResult.textContent = '월 약 14,000원 손실 발생 중';
+        else if(wastedItem === '양파') lossResult.textContent = '월 약 12,500원 손실 발생 중';
+        else if(wastedItem === '마늘') lossResult.textContent = '월 약 15,000원 손실 발생 중';
+        else lossResult.textContent = '월 약 18,500원 손실 발생 중';
+
+        showStep(2);
+    });
+
+    // 단계 2 -> AI 처리(로딩) -> 단계 3 (AI 결과)
+    btnToStep3.addEventListener('click', () => {
+        const item = document.getElementById('required-item').value || '선택 식재료';
+        const qty = document.getElementById('required-qty').value || '소용량';
+
+        document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+        loading.style.display = 'block';
+
+        // AI 처리 시뮬레이션 (1.5초)
+        setTimeout(() => {
+            document.getElementById('ai-item-list').textContent = `${item} (${qty}) [소분 포장]`;
+            document.getElementById('ai-price').textContent = `2,900원`;
+            showStep(3);
+        }, 1500);
+    });
+
+    // 단계 3 -> 단계 4 (피드백 및 사전예약 저장)
+    btnToStep4.addEventListener('click', () => {
+        const payload = {
+            wastedItem: document.getElementById('wasted-item').value,
+            requiredItem: document.getElementById('required-item').value,
+            requiredQty: document.getElementById('required-qty').value,
+            timestamp: new Date().toISOString()
+        };
+
+        // Google Sheets 저장 연동 지점 (PRD Lite ## 5 필요 시 연동)
+        saveToGoogleSheets(payload);
+
+        showStep(4);
+    });
+
+    // Google Sheets 연동 함수 (주석 처리 위치)
+    function saveToGoogleSheets(data) {
+        /*
+        // TODO: Google Apps Script 배포 후 생성된 Web App URL을 아래에 입력하세요.
+        const GOOGLE_SHEETS_WEB_APP_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+
+        if (GOOGLE_SHEETS_WEB_APP_URL !== "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE") {
+            fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            }).catch(error => console.error("Sheets 저장 실패:", error));
+        }
+        */
+        console.log("[DEMO DATA STORED]:", data);
+    }
+</script>
+
+</body>
+</html>
